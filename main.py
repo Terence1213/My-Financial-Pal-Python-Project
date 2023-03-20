@@ -89,6 +89,8 @@ def submit_date(calendar, date_label):
     print(selected_line.get())
 
 
+
+
 # The calendar is opened
 def open_calendar(date_label):
 
@@ -134,6 +136,8 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
 
     balances[selected_account.get()] += transaction_entry.get()
     #When this line is executed an error happens (IndexError: list index out of range)
+    #This happens since if the selected line is 3, user_data might still have only 1, or 2 indexes.
+    #What I am thinking is that every time a date is submitted, "None" is appended to the user_data variable.
     user_data[selected_line.get()].update({transaction_entry.get() : category_entry.get()})
     money_transacted = 0
     transaction_label.config(text=f"Money spent on {date_lines.get(selected_line)}: ")
