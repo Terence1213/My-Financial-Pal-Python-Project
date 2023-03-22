@@ -1,7 +1,7 @@
 """
 To do:
 > Add comments.
-> Make the program save the transactions in the text file.
+> Test the program and fix some stuff like dates randomly being displayed as "None".
 > Make the program more user-friendly. Examples of what to do:
 >> The program disallows the user to not enter any password when created an account.
 >> The program disallows the user to not enter any category when entering a transaction.
@@ -14,6 +14,7 @@ from tkinter import *
 import json
 from tkcalendar import Calendar
 from datetime import *
+
 # Loads all accounts (their usernames and passwords)
 try:
     with open("accounts", "r") as file:
@@ -66,6 +67,21 @@ def save_account_data():
         file.write(new_account_json + "\n" + new_balance_json)
 
 
+def save_user_data():
+
+    print("user data saved!")
+    # Puts all the data in date_lines in the variable new_date_lines_json, in JSON format, as a string variable.
+    new_date_lines_json = json.dumps(date_lines)
+
+    # Saves the file (adds the corresponding dates and line numbers to the account's database file).
+    with open(f"{selected_account.get()}.txt", "w") as file:
+        file.truncate(0)
+        file.write(new_date_lines_json + "\n")
+        for line in user_data:
+            user_data_json = json.dumps(line)
+            file.write(user_data_json + "\n")
+
+
 def check_date(date):
     # A list of all the dates which have already been entered / created before is created.
     dates_entered = [i for i in date_lines.values()]
@@ -76,17 +92,11 @@ def check_date(date):
         date_lines.update({len(date_lines): date})
         selected_line.set(len(date_lines) - 1)
 
-        # Puts all the data in date_lines in the variable new_date_lines_json, in JSON format, as a string variable.
-        new_date_lines_json = json.dumps(date_lines)
-
-        # Saves the file (adds the corresponding dates and line numbers to the account's database file).
-        with open(f"{selected_account.get()}.txt", "w") as file:
-            file.truncate(0)
-            file.write(new_date_lines_json)
+        save_user_data()
 
         user_data.append(dict())
-        print(len(user_data))
-        print(selected_line.get())
+        print("Length of user_data:", len(user_data))
+        print("Selected line in method check_date:", selected_line.get())
     else:
         # If true, the program gets the index of the selected date in the lines variable,
         # and sets it to the selected line
@@ -116,7 +126,7 @@ def submit_date(calendar, date_label, transaction_label):
     # The label in the account menu is updated to the newly selected date.
     date_label.config(text=f"Selected date: {calendar.get_date()}")
     transaction_label.config(text=f"Money spent on {date_lines.get(selected_line.get())}: {money_spent}")
-    print(selected_line.get())
+    print("Selected line is:", selected_line.get())
 
 
 # The calendar is opened
@@ -137,47 +147,72 @@ def open_calendar(date_label, transaction_label):
 def grab_user_data(username):
 
     global date_lines
-    try:
-        with open(f"{username}.txt", "r") as file:
-            # Grabs all the data from the account's file.
-            data = file.readlines()
-            try:
-                # The first line in the file is the corresponding line numbers and dates.
-                date_lines_json = json.loads(data[0])
-                date_lines = dict(date_lines_json)
-            except IndexError:
-                # If the text file is empty, an empty dictionary is created.
-                date_lines = dict()
+    global user_data
 
-    except Exception:
-        print("Something went wrong!")
+    with open(f"{username}.txt", "r") as file:
+        # Grabs all the data from the account's file.
+        data = file.readlines()
+        try:
+            # The first line in the file is the corresponding line numbers and dates.
+            date_lines_json = json.loads(data[0])
+            date_lines = dict(date_lines_json)
+            user_data_json = list()
 
+            for index, line in enumerate(data):
+                if index != 0:
+                    user_data_json.append(json.loads(line))
+
+            user_data = [line for line in user_data_json]
+
+        except IndexError:
+            # If the text file is empty, an empty dictionary is created.
+            date_lines = dict()
+
+
+
+    for line in user_data:
+        print(line)
     # The currently signed in account is set so the program knows which text file to be using.
     selected_account.set(username)
 
 
 #The user submits his transaction
-def submit_transaction(transaction_entry, category_entry, transaction_label, balance_label):
+def submit_transaction(transaction_entry, category_entry, transaction_label, balance_label, window):
 
     transaction = int(transaction_entry.get())
-    print(type(balances.get(selected_account.get())))
-    #His balance is modified accordingly to his transaction
-    balances[selected_account.get()] += transaction
 
-    #The variable which contains all the transactions is updated with the new transaction.
-    user_data[selected_line.get()].update({transaction_entry.get() : category_entry.get()})
+    all_transactions = [key for key in user_data[selected_line.get()]]
 
-    #The transaction label in the account menu is modified accordingly to the user's transaction
-    money_spent = calculate_money_spent(user_data[selected_line.get()])
-    transaction_label.config(text=f"Money spent on {date_lines.get(selected_line.get())}: {money_spent}")
+    for value in all_transactions:
+        print(value)
 
-    #The balance label is updated.
-    balance_label.config(text=f"Current balance: €{balances[selected_account.get()]}")
-    save_account_data()
+    if all_transactions.__contains__(transaction_entry.get()):
+        Label(window, text="Sorry, but you can't enter the same transaction amount twice in the same day. \n"
+                           "Adding a + at the start of your transaction number allows you to enter 2 of \nthe same"
+                           " transaction amount in the same day.",
+              font=("Arial", 10)).pack()
+    else:
+        # His balance is modified accordingly to his transaction
+        balances[selected_account.get()] += transaction
+
+        # The variable which contains all the transactions is updated with the new transaction.
+        user_data[selected_line.get()].update({transaction_entry.get(): category_entry.get()})
+
+        # The transaction label in the account menu is modified accordingly to the user's transaction
+        money_spent = calculate_money_spent(user_data[selected_line.get()])
+        transaction_label.config(text=f"Money spent on {date_lines.get(selected_line.get())}: {money_spent}")
+
+        # The balance label is updated.
+        balance_label.config(text=f"Current balance: €{balances[selected_account.get()]}")
+
+        save_account_data()
+        save_user_data()
+
 
 # The user can either take money from his balance or put money in his balance
 def open_transaction_menu(transaction_label, balance_label):
 
+    #The transaction window is opened
     transaction_window = Toplevel()
 
     transaction_frame = Frame(transaction_window)
@@ -190,8 +225,11 @@ def open_transaction_menu(transaction_label, balance_label):
     category_entry.grid(row=1, column=1)
     submit_entry_button = Button(transaction_window, text="Submit transaction",
                                  command=lambda transact_entry=money_entry, category_entry=category_entry:
-                                 submit_transaction(transact_entry, category_entry, transaction_label, balance_label))
+                                 submit_transaction(transact_entry, category_entry,
+                                                    transaction_label, balance_label, transaction_window))
     submit_entry_button.pack()
+
+
 # The menu where the user enters money and sees statistics is opened.
 def open_account_menu(username):
     # The program grams the account's data from its text file.
