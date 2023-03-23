@@ -7,7 +7,7 @@ from tkinter import *
 import json
 from tkcalendar import Calendar
 from datetime import *
-#Currently working on the statistics. (line 263)
+#Currently working on the statistics. (line 283)
 # Loads all accounts (their usernames and passwords)
 try:
     with open("accounts", "r") as file:
@@ -249,6 +249,7 @@ def open_transaction_menu(transaction_label, balance_label):
 #A window is opened displaying the statistics of the selected day
 def submit_day(calendar, window):
 
+
     is_date_logged = False
     # The program goes through each existing date in the date_lines variable. If the selected date is not found, the
     # user is displayed with the message that his selected date has not been logged on before.
@@ -260,6 +261,37 @@ def submit_day(calendar, window):
         Label(window, text="The date you have selected has not been logged on before!")
     else:
         stats = Toplevel()
+
+        current_line = None
+
+        #The current line is set to the corresponding line of the selected date.
+        for key in date_lines:
+            if date_lines.get(key) == calendar.get_date():
+                print("current_line set to " + key)
+                current_line = key
+
+        total_transactions = 0
+
+        #Goes through each category for each transaction for the selected date.
+        for key in user_data[int(current_line)]:
+            total_transactions += int(key)
+
+        total_transactions_label = \
+            Label(stats, text=f"Total transaction amount made on {calendar.get_date()}: {total_transactions}")
+        total_transactions_label.pack()
+
+        # We need to get each unique category in the user_data variable, and the amount it was purchased for.
+        # For the pi-chart, the total amount of transactions is the denominator in the calculation.
+        categories = list()
+        for line in user_data:
+            pass
+        canvas = Canvas(window, width=500, height=500)
+        canvas.create_arc(100, 100, 350, 350, extent=359, style=ARC, width=5)
+        canvas.create_arc(100, 100, 350, 350, extent=30, fill="red", width=5)
+        canvas.create_arc(100, 100, 350, 350, start=30, extent=70, fill="green", width=5)
+        canvas.create_arc(100, 100, 350, 350, start=100, extent=150, fill="blue", width=5)
+        canvas.create_arc(100, 100, 350, 350, start=250, extent=110, fill="yellow", width=5)
+        canvas.pack()
         #The program displays the total transactions made that day.
         #The program draws a pi chart according to the categories of the user's transactions.
 
@@ -337,6 +369,7 @@ def open_account_menu(username):
     #The user opens the statistics window.
     statistics_button = Button(account_window, text="See statistics", font=("Arial", 25),
                                command=open_statistics_window)
+    statistics_button.pack()
 
     account_window.mainloop()
 
