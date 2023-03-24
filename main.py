@@ -1,13 +1,19 @@
 """
 To do:
-> Add comments.
+> Add comments in line 302.
+> Fix a bit the display of the statistics of the one day statistics window.
+> Work on the statistics of the range of days - line 336
 > work on statistics
 """
 from tkinter import *
 import json
 from tkcalendar import Calendar
 from datetime import *
-#Currently working on the statistics. (line 283)
+from collections import Counter
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import numpy as np
+
 # Loads all accounts (their usernames and passwords)
 try:
     with open("accounts", "r") as file:
@@ -245,6 +251,14 @@ def open_transaction_menu(transaction_label, balance_label):
                                                     transaction_label, balance_label, transaction_window))
     submit_entry_button.pack()
 
+def rgb_to_hex(r,g,b):
+    rgb = [r,g,b]
+    x = ''
+    for i in rgb:
+      x += format(i,'02x').upper()
+    if x[0] == x[1] and x[2] == x[3] and x[4] == x[5]:
+      x = x[0] + x[2] + x[4]
+    return '#'+x
 
 #A window is opened displaying the statistics of the selected day
 def submit_day(calendar, window):
@@ -283,15 +297,38 @@ def submit_day(calendar, window):
         # We need to get each unique category in the user_data variable, and the amount it was purchased for.
         # For the pi-chart, the total amount of transactions is the denominator in the calculation.
         categories = list()
-        for line in user_data:
-            pass
-        canvas = Canvas(window, width=500, height=500)
-        canvas.create_arc(100, 100, 350, 350, extent=359, style=ARC, width=5)
-        canvas.create_arc(100, 100, 350, 350, extent=30, fill="red", width=5)
-        canvas.create_arc(100, 100, 350, 350, start=30, extent=70, fill="green", width=5)
-        canvas.create_arc(100, 100, 350, 350, start=100, extent=150, fill="blue", width=5)
-        canvas.create_arc(100, 100, 350, 350, start=250, extent=110, fill="yellow", width=5)
-        canvas.pack()
+        for key in user_data[int(current_line)]:
+            categories.append(user_data[int(current_line)].get(key))
+
+        categories = Counter(categories)
+
+        sizes = list()
+        labels = list()
+        rgb_colors = list()
+        colors = list()
+
+        for item in categories:
+            sizes.append(categories.get(item))
+            labels.append(item)
+
+        print(len(categories))
+        for index in range(len(categories)):
+            rgb_colors.append(np.random.choice(range(255), size=3))
+            # I need to make it so the rgb is set for only each UNIQUE item in categories, not for each item in it.
+        for (r,g,b) in rgb_colors:
+            colors.append(rgb_to_hex(r, g, b))
+
+        fig = plt.figure(figsize=(6, 6), dpi=100)
+        fig.set_size_inches(6, 6)
+
+        print(colors)
+        plt.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=140)
+        plt.axis('equal')
+
+        canvasbar = FigureCanvasTkAgg(fig, master=stats)
+        canvasbar.draw()
+        canvasbar.get_tk_widget().place(relx=0.5, rely=0.3, anchor=CENTER)
+
         #The program displays the total transactions made that day.
         #The program draws a pi chart according to the categories of the user's transactions.
 
