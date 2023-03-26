@@ -1,7 +1,6 @@
 """
 To do:
-> Add comments in line 302.
-> Fix a bit the display of the statistics of the one day statistics window.
+> Make it so if with the user's transaction the user's balance goes below 0, an error message is displayed to the user.
 > Work on the statistics of the range of days - line 336
 > work on statistics
 """
@@ -165,7 +164,7 @@ def grab_user_data(username):
                 if index != 0:
                     user_data_json.append(json.loads(line))
 
-            #The data which is grabbed from the text file is transferred into the public user_data variable.
+            # The data which is grabbed from the text file is transferred into the public user_data variable.
             user_data = [line for line in user_data_json]
 
 
@@ -181,12 +180,11 @@ def grab_user_data(username):
 
 # The user submits his transaction
 def submit_transaction(transaction_entry, category_entry, transaction_label, balance_label, window):
-
     transaction = None
 
     is_transaction_valid = True
 
-    #Checks if either the transaction entry box or the category entry box are empty.
+    # Checks if either the transaction entry box or the category entry box are empty.
     if transaction_entry.get() == "" or category_entry.get() == "":
         is_transaction_valid = False
         Label(window, text="You cannot leave the transaction box or the category box empty!").pack()
@@ -194,7 +192,7 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
     # The program tries to convert the transaction into an integer variable. If the entry is either empty or not
     # entirely numeric, error messages are displayed, and the transaction is set as not valid.
     try:
-        #The transaction entry is converted into an integer variable.
+        # The transaction entry is converted into an integer variable.
         transaction = int(transaction_entry.get())
     except ValueError:
         is_transaction_valid = False
@@ -203,11 +201,13 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
         else:
             Label(window, text="You can only enter numbers in the transaction box!").pack()
 
-    all_transactions = [key for key in user_data[selected_line.get()]]
-
-    #If the transaction the user enters has already been entered before in the same day, he is prompted with an error
-    #message. I left the program like this because it is very complicated for me to find a way to make a dictionary
-    #which allows for duplicate keys, while making the program work and save and load the data from / to the text files.
+    if len(user_data) > 0:
+        all_transactions = [key for key in user_data[selected_line.get()]]
+    else:
+        all_transactions = list()
+    # If the transaction the user enters has already been entered before in the same day, he is prompted with an error
+    # message. I left the program like this because it is very complicated for me to find a way to make a dictionary
+    # which allows for duplicate keys, while making the program work and save and load the data from / to the text files
     if all_transactions.__contains__(transaction_entry.get()):
         Label(window, text="Sorry, but you can't enter the same transaction amount twice in the same day. \n"
                            "Adding a + at the start of your transaction number allows you to enter 2 of \nthe same"
@@ -251,19 +251,61 @@ def open_transaction_menu(transaction_label, balance_label):
                                                     transaction_label, balance_label, transaction_window))
     submit_entry_button.pack()
 
-def rgb_to_hex(r,g,b):
-    rgb = [r,g,b]
+
+#The program converts an RGB colorcode to a hexadecimal colorcode
+def rgb_to_hex(r, g, b):
+    rgb = [r, g, b]
     x = ''
     for i in rgb:
-      x += format(i,'02x').upper()
+        x += format(i, '02x').upper()
     if x[0] == x[1] and x[2] == x[3] and x[4] == x[5]:
-      x = x[0] + x[2] + x[4]
-    return '#'+x
+        x = x[0] + x[2] + x[4]
+    return '#' + x
 
-#A window is opened displaying the statistics of the selected day
+
+#Creates and draws a pichart on the specified window and with the specified details.
+def create_pichart(categories, window):
+    # The variable which contains the amount each category was transacted for.
+    sizes = list()
+    # The variable which contains labels which are to be shown for each category in the pi-chart.
+    labels = list()
+    # The variable which contains the randomised colors in a temporary RGB format.
+    rgb_colors = list()
+    # The variable which contains the required colors translated to hexadecimal format.
+    colors = list()
+
+    # For each category in the categories variable, the program appends the amount of the item to sizes variable,
+    # and the name of the item to the labels variable.
+    for item in categories:
+        sizes.append(categories.get(item))
+        labels.append(item)
+
+    # For each unique category, the program generates a new random color (a random set of 3 numbers - RGB)
+    for index in range(len(categories)):
+        rgb_colors.append(np.random.choice(range(255), size=3))
+
+    # The program translates all the generated colours to hexadecimal format.
+    for (r, g, b) in rgb_colors:
+        colors.append(rgb_to_hex(r, g, b))
+
+    # The program sets the figure of the pi-chart and the canvas bar.
+    fig = plt.figure(figsize=(3, 3), dpi=100)
+    fig.set_size_inches(3, 3)
+
+    # The pi-chart is plotted.
+    plt.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=140)
+    plt.axis('equal')
+
+    # The canvasbar is shown
+    canvasbar = FigureCanvasTkAgg(fig, master=window)
+    canvasbar.draw()
+    canvasbar.get_tk_widget().pack()
+    plt.close('all')
+
+
+# A window is opened displaying the statistics of the selected day.
+# I have to make it so there are separate pi-charts for money-in and money-out.
 def submit_day(calendar, window):
-
-
     is_date_logged = False
     # The program goes through each existing date in the date_lines variable. If the selected date is not found, the
     # user is displayed with the message that his selected date has not been logged on before.
@@ -272,74 +314,71 @@ def submit_day(calendar, window):
             is_date_logged = True
 
     if not is_date_logged:
-        Label(window, text="The date you have selected has not been logged on before!")
+        Label(window, text="The date you have selected has not been logged on before!").pack()
     else:
         stats = Toplevel()
+        stats.title(f"Statistics on {calendar.get_date()}")
+        stats.geometry("700x800")
 
         current_line = None
 
-        #The current line is set to the corresponding line of the selected date.
+        # The current line is set to the corresponding line of the selected date.
         for key in date_lines:
             if date_lines.get(key) == calendar.get_date():
-                print("current_line set to " + key)
+                print("current_line set to " + str(key))
                 current_line = key
 
         total_transactions = 0
 
-        #Goes through each category for each transaction for the selected date.
+        # Goes through each category for each transaction for the selected date.
         for key in user_data[int(current_line)]:
             total_transactions += int(key)
 
-        total_transactions_label = \
-            Label(stats, text=f"Total transaction amount made on {calendar.get_date()}: {total_transactions}")
+        total_transactions_label = Label(stats, text=f"Total transaction amount made on "
+                                                     f"{calendar.get_date()}: {total_transactions}", font=("Arial", 25))
         total_transactions_label.pack()
 
-        # We need to get each unique category in the user_data variable, and the amount it was purchased for.
-        # For the pi-chart, the total amount of transactions is the denominator in the calculation.
-        categories = list()
+        # Grabs all the transactions in and out, in the selected day, gets their categories and puts them in a list.
+        spend_categories = list()
+        deposit_categories = list()
+
+        # Grabs all the transactions in and out in the selected day and puts them in a list.
+        spend_transactions = list()
+        deposit_transactions = list()
+
         for key in user_data[int(current_line)]:
-            categories.append(user_data[int(current_line)].get(key))
+            # If the key (the transaction amount) is negative, then the spend_categories is appended with the category.
+            if int(key) < 0:
+                spend_categories.append(user_data[int(current_line)].get(key))
+                spend_transactions.append(int(key))
+            #If the key (the transaction amount) is positive, then the deposit_categories is appended with the category.
+            else:
+                deposit_categories.append(user_data[int(current_line)].get(key))
+                deposit_transactions.append(int(key))
 
-        categories = Counter(categories)
+        # Grabs the amount of times each category was transacted for, and puts it into a dictionary. ("Food : 1", etc.
+        spend_categories = Counter(spend_categories)
+        deposit_categories = Counter(deposit_categories)
 
-        sizes = list()
-        labels = list()
-        rgb_colors = list()
-        colors = list()
+        # Each item and its amount is multiplied with the corresponding transaction ammount, so that if 100 was spent on
+        # food once and 1000 was spent on clothes once, in the pichart they are not displayed as 50/50
+        for index, item in enumerate(spend_categories):
+            spend_categories[item] *= -spend_transactions[index]
+        for index, item in enumerate(deposit_categories):
+            deposit_categories[item] *= deposit_transactions[index]
 
-        for item in categories:
-            sizes.append(categories.get(item))
-            labels.append(item)
+        Label(stats, text="Pi-chart of transactions in:", font=("Arial", 20)).pack()
+        create_pichart(deposit_categories, stats)
+        Label(stats, text="Pi-chart of transactions out:", font=("Arial", 20)).pack()
+        create_pichart(spend_categories, stats)
 
-        print(len(categories))
-        for index in range(len(categories)):
-            rgb_colors.append(np.random.choice(range(255), size=3))
-            # I need to make it so the rgb is set for only each UNIQUE item in categories, not for each item in it.
-        for (r,g,b) in rgb_colors:
-            colors.append(rgb_to_hex(r, g, b))
-
-        fig = plt.figure(figsize=(6, 6), dpi=100)
-        fig.set_size_inches(6, 6)
-
-        print(colors)
-        plt.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=140)
-        plt.axis('equal')
-
-        canvasbar = FigureCanvasTkAgg(fig, master=stats)
-        canvasbar.draw()
-        canvasbar.get_tk_widget().place(relx=0.5, rely=0.3, anchor=CENTER)
-
-        #The program displays the total transactions made that day.
-        #The program draws a pi chart according to the categories of the user's transactions.
-
-#A window is opened displaying the statistics of the days selected combined.
+# A window is opened displaying the statistics of the days selected combined.
 def submit_range_of_days():
     pass
 
 
-#A calendar is opened, and the user selects which day he wants to see statistics for.
+# A calendar is opened, and the user selects which day he wants to see statistics for.
 def day_statistics():
-
     day_statistics_window = Toplevel()
     calendar = Calendar(day_statistics_window, date_pattern="dd/mm/yy")
     calendar.pack()
@@ -348,23 +387,26 @@ def day_statistics():
     submit_button.pack()
 
 
-
-#A calendar is opened, and the user selects which range of days he wants to see statistics for.
+# A calendar is opened, and the user selects which range of days he wants to see statistics for.
 def ranged_statistics():
     pass
 
 
-#The user chooses if he wants to see the statistics of a single day, or of a range of days.
+# The user chooses if he wants to see the statistics of a single day, or of a range of days.
 def open_statistics_window():
+    if len(user_data) > 0:
+        statistics_window = Toplevel()
+        statistics_window.title("Statistics window")
 
-    statistics_window = Toplevel()
-    statistics_window.title("Statistics window")
+        daily_button = Button(statistics_window, text="One day", font=("Arial", 25), command=day_statistics)
+        daily_button.pack()
 
-    daily_button = Button(statistics_window, text="One day", font=("Arial", 25), command=day_statistics)
-    daily_button.pack()
+        ranged_day_button = Button(statistics_window, text="Range of days", font=("Arial", 25),
+                                   command=ranged_statistics)
+        ranged_day_button.pack()
+    else:
+        print("No transactions were ever made on this account!")
 
-    ranged_day_button = Button(statistics_window, text="Range of days", font=("Arial",25), command=ranged_statistics)
-    ranged_day_button.pack()
 
 # The menu where the user enters money and sees statistics is opened.
 def open_account_menu(username):
@@ -388,9 +430,16 @@ def open_account_menu(username):
     # Displays the current balance of the user.
     current_balance_label = Label(account_window, text=f"Current balance: {balances.get(selected_account.get())}",
                                   font=("Arial", 20))
-    money_spent = calculate_money_spent(user_data[selected_line.get()])
+
+    money_spent = 0
+
+    try:
+        money_spent = calculate_money_spent(user_data[selected_line.get()])
+    except IndexError:
+        print("Tried calculating the money spent on the selected day, but no transactions have been entered yet!")
     current_balance_label.pack()
-    money_transacted_label = Label(account_window, text=f"Money transacted on {present_date}: {money_spent}", font=("Arial", 20))
+    money_transacted_label = Label(account_window, text=f"Money transacted on {present_date}: {money_spent}",
+                                   font=('Arial', 20))
     money_transacted_label.pack()
     # The user can transact money with this button.
     transaction_button = Button(account_window, text="Transact money", font=("Arial", 25),
@@ -403,7 +452,7 @@ def open_account_menu(username):
                              command=lambda label=selected_date_label, money_label=money_transacted_label:
                              open_calendar(label, money_label))
     calendar_button.pack()
-    #The user opens the statistics window.
+    # The user opens the statistics window.
     statistics_button = Button(account_window, text="See statistics", font=("Arial", 25),
                                command=open_statistics_window)
     statistics_button.pack()
@@ -413,7 +462,6 @@ def open_account_menu(username):
 
 # The user confirms his sign (if his entered account is valid).
 def confirm_sign_in(username_entry, password_entry):
-
     correct_password = True
     if len(account_details) == 0:
         Label(sign_in_menu, text="There arent any existing accounts yet!", font=("Arial", 15)).pack()
@@ -454,18 +502,17 @@ def open_sign_in_menu():
     button.pack()
 
 
-#The user submits the balance which he enters in the balance entry box.
+# The user submits the balance which he enters in the balance entry box.
 def submit_balance(balance_entry, name_entry):
-
-    #The program tries, since if text is entered a run-time error would occur.
+    # The program tries, since if text is entered a run-time error would occur.
     try:
-        #The balances dictionary is updated with the new account's starting balance.
+        # The balances dictionary is updated with the new account's starting balance.
         balances.update({name_entry.get(): int(balance_entry.get())})
 
-        #The account text file is loaded and saved with this new data.
+        # The account text file is loaded and saved with this new data.
         save_account_data()
 
-        #The balance and new account window are destroyed, leaving only the main menu open.
+        # The balance and new account window are destroyed, leaving only the main menu open.
         balance_window.destroy()
         new_account_menu.destroy()
     except ValueError:
@@ -473,9 +520,9 @@ def submit_balance(balance_entry, name_entry):
                       text="You can`t enter text in the balance entry box (only numbers can be entered.)!")
         error.pack()
 
+
 # When creating his account, the user enters his starting balance
 def open_set_balance_menu(name_entry):
-
     # The balance window is opened.
     global balance_window
     balance_window = Toplevel()
@@ -494,7 +541,6 @@ def open_set_balance_menu(name_entry):
 
 # The user tries to submit his account
 def submit_account(username_entry, password_entry, menu):
-
     # If the user enters a username which is already taken, this is set to false, and the account won't be created.
     account_valid = True
 
@@ -514,8 +560,6 @@ def submit_account(username_entry, password_entry, menu):
         error = Label(menu, text="There is already an existing account with the same username!")
         error.pack()
         account_valid = False
-
-
 
     # If the account the user entered isn't already taken, the user is sent back to the main menu,
     # and the new account is saved
