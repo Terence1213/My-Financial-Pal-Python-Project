@@ -1,12 +1,12 @@
 """
 To do:
-> Make it so if with the user's transaction the user's balance goes below 0, an error message is displayed to the user.
-> Work on the statistics of the range of days - line 336
+> Work on the statistics of the range of days - line 386 and 426 (Currently working on selecting the dates)
 > work on statistics
 """
 from tkinter import *
 import json
 from tkcalendar import Calendar
+import datetime
 from datetime import *
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -92,9 +92,11 @@ def check_date(date):
         date_lines.update({len(date_lines): date})
         selected_line.set(len(date_lines) - 1)
 
+        user_data.append(dict())
+
         save_user_data()
 
-        user_data.append(dict())
+
 
     else:
         # If true, the program gets the index of the selected date in the lines variable,
@@ -118,15 +120,17 @@ def calculate_money_spent(day):
 def submit_date(calendar, date_label, transaction_label):
     # Checks whether the selected date has already been entered or not, and executes instructions accordingly.
     check_date(calendar.get_date())
-
-    # Calculates the money spent depending on all the transactions in the date.
-    money_spent = calculate_money_spent(user_data[selected_line.get()])
-
+    money_spent = 0
+    try:
+        # Calculates the money spent depending on all the transactions in the date.
+        money_spent = calculate_money_spent(user_data[selected_line.get()])
+    except IndexError:
+        print("Tried calculating the money spent on the selected day, but no transactions have been entered yet!")
     # The label in the account menu is updated to the newly selected date.
     date_label.config(text=f"Selected date: {calendar.get_date()}")
 
     # The selected_line is typecasted to string because the line numbers in date_lines are saved as strings.
-    transaction_label.config(text=f"Money spent on {date_lines.get(str(selected_line.get()))}: {money_spent}")
+    transaction_label.config(text=f"Money spent on {calendar.get_date()}: {money_spent}")
 
 
 # The calendar is opened
@@ -201,9 +205,9 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
         else:
             Label(window, text="You can only enter numbers in the transaction box!").pack()
 
-    if len(user_data) > 0:
+    try:
         all_transactions = [key for key in user_data[selected_line.get()]]
-    else:
+    except IndexError:
         all_transactions = list()
     # If the transaction the user enters has already been entered before in the same day, he is prompted with an error
     # message. I left the program like this because it is very complicated for me to find a way to make a dictionary
@@ -213,7 +217,7 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
                            "Adding a + at the start of your transaction number allows you to enter 2 of \nthe same"
                            " transaction amount in the same day.",
               font=("Arial", 10)).pack()
-    elif is_transaction_valid:
+    elif is_transaction_valid and (balances[selected_account.get()] + transaction) >= 0:
         # His balance is modified accordingly to his transaction
         balances[selected_account.get()] += transaction
 
@@ -222,6 +226,9 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
 
         # The transaction label in the account menu is modified accordingly to the user's transaction
         money_spent = calculate_money_spent(user_data[selected_line.get()])
+        print(selected_line.get())
+        print(type(selected_line.get()))
+        print(date_lines.get("2"))
 
         transaction_label.config(text=f"Money spent on {date_lines.get(str(selected_line.get()))}: {money_spent}")
 
@@ -230,6 +237,8 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
 
         save_account_data()
         save_user_data()
+    elif is_transaction_valid:
+        Label(window, text="You cannot extract more money than you currently have in you").pack()
 
 
 # The user can either take money from his balance or put money in his balance
@@ -252,7 +261,7 @@ def open_transaction_menu(transaction_label, balance_label):
     submit_entry_button.pack()
 
 
-#The program converts an RGB colorcode to a hexadecimal colorcode
+# The program converts an RGB colorcode to a hexadecimal colorcode
 def rgb_to_hex(r, g, b):
     rgb = [r, g, b]
     x = ''
@@ -263,7 +272,7 @@ def rgb_to_hex(r, g, b):
     return '#' + x
 
 
-#Creates and draws a pichart on the specified window and with the specified details.
+# Creates and draws a pichart on the specified window and with the specified details.
 def create_pichart(categories, window):
     # The variable which contains the amount each category was transacted for.
     sizes = list()
@@ -351,7 +360,7 @@ def submit_day(calendar, window):
             if int(key) < 0:
                 spend_categories.append(user_data[int(current_line)].get(key))
                 spend_transactions.append(int(key))
-            #If the key (the transaction amount) is positive, then the deposit_categories is appended with the category.
+            # If the key (the transaction amount) is positive, then the deposit_categories is appended with the category.
             else:
                 deposit_categories.append(user_data[int(current_line)].get(key))
                 deposit_transactions.append(int(key))
@@ -372,9 +381,35 @@ def submit_day(calendar, window):
         Label(stats, text="Pi-chart of transactions out:", font=("Arial", 20)).pack()
         create_pichart(spend_categories, stats)
 
+
 # A window is opened displaying the statistics of the days selected combined.
-def submit_range_of_days():
-    pass
+def submit_range_of_days(date1, date2):
+    # Date format: %d/%m/%y
+    total_transactions = 0
+    current_line = None
+    if date1 is not None and date2 is not None:
+        current_date = date1
+
+        while True:
+            print(str(current_date))
+
+            # The current line is set to the corresponding line of the selected date.
+            for key in date_lines:
+                if date_lines.get(key) == current_date:
+                    print("current_line set to " + str(key))
+                    current_line = key
+
+            # Goes through each category for each transaction for the selected date.
+            for key in user_data[int(current_line)]:
+                total_transactions += int(key)
+
+            # Add the current day's transactions to the total transactions and their categories.
+            # Now move to the next day.
+            if current_date == date2:
+                break
+            current_date += datetime.timedelta(days=1)
+        print(total_transactions)
+    # Draw the pi-chart with the information of all the days.
 
 
 # A calendar is opened, and the user selects which day he wants to see statistics for.
@@ -389,7 +424,47 @@ def day_statistics():
 
 # A calendar is opened, and the user selects which range of days he wants to see statistics for.
 def ranged_statistics():
-    pass
+    date_one = None
+    date_two = None
+
+    # The first date of the range of dates is selected by the user
+    def set_date_one(date):
+        print(date)
+        global date_one
+        date_one = date
+
+    # the second date of the range of dates is selected by the user
+    def set_date_two(date):
+        print(date)
+        global date_two
+        date_two = date
+
+    ranged_statistics_window = Toplevel()
+    calendar = Calendar(ranged_statistics_window, date_pattern="dd/mm/yy")
+    calendar.pack()
+
+    # This is the frame which contains the date_one select and date_two select button
+    frame = Frame(ranged_statistics_window)
+
+    # The user selectes the starting and ending dates with these buttons
+    date_one_button = Button(frame, text="Choose date1", command=lambda date=calendar.get_date():
+    set_date_one(date))
+    date_two_button = Button(frame, text="Choose date2", command=lambda date=calendar.get_date():
+    set_date_two(date))
+
+    # The buttons are displayed
+    date_one_button.grid(row=0, column=0)
+    date_two_button.grid(row=0, column=1)
+
+    # The frame is displayed
+    frame.pack()
+
+    # If the starting and ending dates were selected, and date1 is smaller than date2, the user clicks the submit button
+    # to submit the dates.
+    submit_button = Button(ranged_statistics_window, text="Submit Date", font=("Arial", 25),
+                           command=lambda date1=date_one, date2=date_two:
+                           submit_range_of_days(date1, date2))
+    submit_button.pack()
 
 
 # The user chooses if he wants to see the statistics of a single day, or of a range of days.
