@@ -1,13 +1,7 @@
-"""
-To do:
-> Test the program and go over code and comments.
-"""
 from tkinter import *
 import json
 from tkcalendar import Calendar
-import datetime
 from datetime import *
-from datetime import timedelta
 from collections import Counter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -18,7 +12,7 @@ try:
     with open("accounts", "r") as file:
         data = file.readlines()
 except Exception:
-    print("Something went wrong!")
+    pass
 
 # The program tries to get each account's username and password from the accounts text file, to a dictionary variable.
 try:
@@ -36,10 +30,13 @@ except IndexError:
     # If the text file is empty, an empty dictionary is created.
     balances = dict()
 
+# This variable contains the indexes/line numbers corresponding to each date which was previously selected by the user.
 date_lines = dict()
 
+# This variable contains all the transactions and their categories, for each day which was entered by the user.
 user_data = []
 
+#This is the menu which is shown at the start of the program.
 main_menu_window = Tk()
 
 # The current account whose data is being used, and manipulated.
@@ -59,14 +56,14 @@ def save_account_data():
     # Puts all the data in balances in the variable new_balance_json, in JSON format, as a string variable.
     new_balance_json = json.dumps(balances)
 
-    # Saves the file (adds the account and balances to the accounts database file).
+    # Saves the file (adds the account and balances to the accounts text file).
     with open("accounts", "w") as file:
         file.truncate(0)
         file.write(new_account_json + "\n" + new_balance_json)
 
 
 def save_user_data():
-    print("user data saved!")
+
     # Puts all the data in date_lines in the variable new_date_lines_json, in JSON format, as a string variable.
     new_date_lines_json = json.dumps(date_lines)
 
@@ -83,6 +80,7 @@ def save_user_data():
 
 
 def check_date(date):
+
     # A list of all the dates which have already been entered / created before is created.
     dates_entered = [i for i in date_lines.values()]
 
@@ -95,8 +93,6 @@ def check_date(date):
         user_data.append(dict())
 
         save_user_data()
-
-
 
     else:
         # If true, the program gets the index of the selected date in the lines variable,
@@ -111,21 +107,24 @@ def calculate_money_spent(day):
     money_spent = 0
 
     for key in day:
-        money_spent += int(key)
+        money_spent += float(key)
 
     return money_spent
 
 
 # The selected date in the calendar is submitted.
 def submit_date(calendar, date_label, transaction_label):
+
     # Checks whether the selected date has already been entered or not, and executes instructions accordingly.
     check_date(calendar.get_date())
-    money_spent = 0
+    money_spent = 0.0
+
     try:
         # Calculates the money spent depending on all the transactions in the date.
         money_spent = calculate_money_spent(user_data[selected_line.get()])
     except IndexError:
-        print("Tried calculating the money spent on the selected day, but no transactions have been entered yet!")
+        pass
+
     # The label in the account menu is updated to the newly selected date.
     date_label.config(text=f"Selected date: {calendar.get_date()}")
 
@@ -171,19 +170,17 @@ def grab_user_data(username):
             # The data which is grabbed from the text file is transferred into the public user_data variable.
             user_data = [line for line in user_data_json]
 
-
         except IndexError:
             # If the text file is empty, an empty dictionary is created.
             date_lines = dict()
 
-    for line in user_data:
-        print(line)
     # The currently signed in account is set so the program knows which text file to be using.
     selected_account.set(username)
 
 
 # The user submits his transaction
 def submit_transaction(transaction_entry, category_entry, transaction_label, balance_label, window):
+
     transaction = None
 
     is_transaction_valid = True
@@ -197,7 +194,7 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
     # entirely numeric, error messages are displayed, and the transaction is set as not valid.
     try:
         # The transaction entry is converted into an integer variable.
-        transaction = int(transaction_entry.get())
+        transaction = float(transaction_entry.get())
     except ValueError:
         is_transaction_valid = False
         if transaction_entry.get() == "":
@@ -226,11 +223,13 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
 
         # The transaction label in the account menu is modified accordingly to the user's transaction
         money_spent = calculate_money_spent(user_data[selected_line.get()])
-        print(selected_line.get())
-        print(type(selected_line.get()))
-        print(date_lines.get("2"))
 
-        transaction_label.config(text=f"Money spent on {date_lines.get(str(selected_line.get()))}: {money_spent}")
+        # I did this because for some reason the program was randomly getting the index in date_lines as a string or
+        # an int, rather than always being one of them.
+        if date_lines.get(str(selected_line.get())) != None:
+            transaction_label.config(text=f"Money spent on {date_lines.get(str(selected_line.get()))}: {money_spent}")
+        else:
+            transaction_label.config(text=f"Money spent on {date_lines.get(selected_line.get())}: {money_spent}")
 
         # The balance label is updated.
         balance_label.config(text=f"Current balance: €{balances[selected_account.get()]}")
@@ -243,6 +242,7 @@ def submit_transaction(transaction_entry, category_entry, transaction_label, bal
 
 # The user can either take money from his balance or put money in his balance
 def open_transaction_menu(transaction_label, balance_label):
+
     # The transaction window is opened
     transaction_window = Toplevel()
 
@@ -272,7 +272,7 @@ def rgb_to_hex(r, g, b):
     return '#' + x
 
 
-# Creates and draws a pichart on the specified window and with the specified details.
+# Creates and draws a pi-chart on the specified window and with the specified details.
 def create_pichart(categories, window):
     # The variable which contains the amount each category was transacted for.
     sizes = list()
@@ -305,10 +305,10 @@ def create_pichart(categories, window):
     plt.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=140)
     plt.axis('equal')
 
-    # The canvasbar is shown
-    canvasbar = FigureCanvasTkAgg(fig, master=window)
-    canvasbar.draw()
-    canvasbar.get_tk_widget().pack()
+    # The canvas bar is shown
+    canvas_bar = FigureCanvasTkAgg(fig, master=window)
+    canvas_bar.draw()
+    canvas_bar.get_tk_widget().pack()
     plt.close('all')
 
 
@@ -327,21 +327,19 @@ def submit_day(calendar, window):
     else:
         stats = Toplevel()
         stats.title(f"Statistics on {calendar.get_date()}")
-        stats.geometry("700x800")
 
         current_line = None
 
         # The current line is set to the corresponding line of the selected date.
         for key in date_lines:
             if date_lines.get(key) == calendar.get_date():
-                print("current_line set to " + str(key))
                 current_line = key
 
-        total_transactions = 0
+        total_transactions = 0.0
 
         # Goes through each category for each transaction for the selected date.
         for key in user_data[int(current_line)]:
-            total_transactions += int(key)
+            total_transactions += float(key)
 
         total_transactions_label = Label(stats, text=f"Total transaction amount made on "
                                                      f"{calendar.get_date()}: {total_transactions}", font=("Arial", 25))
@@ -357,13 +355,14 @@ def submit_day(calendar, window):
 
         for key in user_data[int(current_line)]:
             # If the key (the transaction amount) is negative, then the spend_categories is appended with the category.
-            if int(key) < 0:
+            if float(key) < 0:
                 spend_categories.append(user_data[int(current_line)].get(key))
-                spend_transactions.append(int(key))
-            # If the key (the transaction amount) is positive, then the deposit_categories is appended with the category.
+                spend_transactions.append(float(key))
+            # If the key (the transaction amount) is positive, then the deposit_categories is appended with the
+            # category.
             else:
                 deposit_categories.append(user_data[int(current_line)].get(key))
-                deposit_transactions.append(int(key))
+                deposit_transactions.append(float(key))
 
         # Grabs the amount of times each category was transacted for, and puts it into a dictionary. ("Food : 1", etc.
         spend_categories = Counter(spend_categories)
@@ -388,11 +387,9 @@ def submit_range_of_days(date1, date2):
     ranged_stats_window = Toplevel()
     ranged_stats_window.title("Ranged statistics window")
     # Date format: %d/%m/%y
-    total_transactions = 0
+    total_transactions = 0.0
 
     current_line = None
-
-    print(date1.get(), date2.get())
 
     # Grabs all the transactions in and out, in the selected day, gets their categories and puts them in a list.
     spend_categories = list()
@@ -421,18 +418,18 @@ def submit_range_of_days(date1, date2):
                 # Goes through each category for each transaction for the selected date, if the date selected has been
                 # logged on before.
                 for key in user_data[int(current_line)]:
-                    total_transactions += int(key)
+                    total_transactions += float(key)
 
                     # If the key (the transaction amount) is negative, then the spend_categories is appended with the
                     # category.
-                    if int(key) < 0:
+                    if float(key) < 0:
                         spend_categories.append(user_data[int(current_line)].get(key))
-                        spend_transactions.append(int(key))
+                        spend_transactions.append(float(key))
                     # If the key (the transaction amount) is positive, then the deposit_categories is appended with the
                     # category.
                     else:
                         deposit_categories.append(user_data[int(current_line)].get(key))
-                        deposit_transactions.append(int(key))
+                        deposit_transactions.append(float(key))
 
             # Add the current day's transactions to the total transactions and their categories.
             # Now move to the next day.
@@ -445,7 +442,6 @@ def submit_range_of_days(date1, date2):
             present_date = datetime.strptime(current_date, format)
             present_date += timedelta(days=1)
             current_date = present_date.strftime(format)
-            print("new date is:", current_date)
 
         # Grabs the amount of times each category was transacted for, and puts it into a dictionary. ("Food : 1", etc.
         spend_categories = Counter(spend_categories)
@@ -483,16 +479,19 @@ def day_statistics():
 
 
 # The first date of the range of dates is selected by the user
-def set_date_two(calendar):
-    print(calendar.get_date())
+def set_date_two(calendar, label):
+
     global date_two
     date_two.set(calendar.get_date())
+    label.config(text=calendar.get_date())
+
 
 # the second date of the range of dates is selected by the user
-def set_date_one(calendar):
-    print(calendar.get_date())
+def set_date_one(calendar, label):
+
     global date_one
     date_one.set(calendar.get_date())
+    label.config(text=calendar.get_date())
 
 
 # A calendar is opened, and the user selects which range of days he wants to see statistics for.
@@ -511,15 +510,22 @@ def ranged_statistics():
     # This is the frame which contains the date_one select and date_two select button
     frame = Frame(ranged_statistics_window)
 
-    # The user selectes the starting and ending dates with these buttons
+    date_one_label = Label(frame)
+    date_two_label = Label(frame)
+
+    # The user selects the starting and ending dates with these buttons
     date_one_button = Button(frame, text="Choose date1", command=lambda calendar=calendar:
-    set_date_one(calendar))
+    set_date_one(calendar, date_one_label))
     date_two_button = Button(frame, text="Choose date2", command=lambda calendar=calendar:
-    set_date_two(calendar))
+    set_date_two(calendar, date_two_label))
+
+    # The labels which show the dates that the user selected are displayed.
+    date_one_label.grid(row=0, column=0)
+    date_two_label.grid(row=0, column=1)
 
     # The buttons are displayed
-    date_one_button.grid(row=0, column=0)
-    date_two_button.grid(row=0, column=1)
+    date_one_button.grid(row=1, column=0)
+    date_two_button.grid(row=1, column=1)
 
     # The frame is displayed
     frame.pack()
@@ -534,18 +540,29 @@ def ranged_statistics():
 
 # The user chooses if he wants to see the statistics of a single day, or of a range of days.
 def open_statistics_window():
-    if len(user_data) > 0:
-        statistics_window = Toplevel()
-        statistics_window.title("Statistics window")
 
-        daily_button = Button(statistics_window, text="One day", font=("Arial", 25), command=day_statistics)
-        daily_button.pack()
+    statistics_window = Toplevel()
+    statistics_window.title("Statistics window")
 
-        ranged_day_button = Button(statistics_window, text="Range of days", font=("Arial", 25),
-                                   command=ranged_statistics)
-        ranged_day_button.pack()
-    else:
-        print("No transactions were ever made on this account!")
+    daily_button = Button(statistics_window, text="One day", font=("Arial", 25), command=day_statistics)
+    daily_button.pack()
+
+    ranged_day_button = Button(statistics_window, text="Range of days", font=("Arial", 25),
+                               command=ranged_statistics)
+    ranged_day_button.pack()
+
+
+
+#The user signs out of his account and is prompted the main menu.
+def sign_out(window):
+
+    #The user's account menu is closed, and the main menu is opened.
+    window.destroy()
+    global main_menu_window
+    main_menu_window = Tk()
+    main_menu_window.title("Main Menu")
+    Button(main_menu_window, text="Sign in", font=("Arial", 25), command=open_sign_in_menu).pack()
+    Button(main_menu_window, text="Create account", font=("Arial", 25), command=open_account_creation_menu).pack()
 
 
 # The menu where the user enters money and sees statistics is opened.
@@ -562,7 +579,6 @@ def open_account_menu(username):
     main_menu_window.destroy()
     account_window = Tk()
     account_window.title("My Financial Pal - " + username)
-    account_window.geometry("600x600")
 
     # Displays the currently selected date
     selected_date_label = Label(account_window, text=f"Selected date: {present_date}", font=("Arial", 20))
@@ -571,44 +587,59 @@ def open_account_menu(username):
     current_balance_label = Label(account_window, text=f"Current balance: {balances.get(selected_account.get())}",
                                   font=("Arial", 20))
 
-    money_spent = 0
+    money_spent = 0.0
 
     try:
         money_spent = calculate_money_spent(user_data[selected_line.get()])
     except IndexError:
-        print("Tried calculating the money spent on the selected day, but no transactions have been entered yet!")
+        pass
+
     current_balance_label.pack()
     money_transacted_label = Label(account_window, text=f"Money transacted on {present_date}: {money_spent}",
                                    font=('Arial', 20))
     money_transacted_label.pack()
+
     # The user can transact money with this button.
     transaction_button = Button(account_window, text="Transact money", font=("Arial", 25),
                                 command=lambda transact_label=money_transacted_label,
                                                balance_label=current_balance_label:
                                 open_transaction_menu(transact_label, balance_label))
     transaction_button.pack()
+
     # The user can choose the date which he wants to log entries in with the calendar.
     calendar_button = Button(account_window, text="Select Day", font=("Arial", 25),
                              command=lambda label=selected_date_label, money_label=money_transacted_label:
                              open_calendar(label, money_label))
     calendar_button.pack()
+
     # The user opens the statistics window.
     statistics_button = Button(account_window, text="See statistics", font=("Arial", 25),
                                command=open_statistics_window)
     statistics_button.pack()
+
+    # The user signs out of his account.
+    sign_out_button = Button(account_window, text="Sign out", font=("Arial", 25),
+                             command=lambda window=account_window: sign_out(window))
+    sign_out_button.pack()
 
     account_window.mainloop()
 
 
 # The user confirms his sign (if his entered account is valid).
 def confirm_sign_in(username_entry, password_entry):
+
     correct_password = True
+
+    # If account_details is empty, no accounts are saved in the accounts file, and so no accounts have been created yet.
     if len(account_details) == 0:
         Label(sign_in_menu, text="There arent any existing accounts yet!", font=("Arial", 15)).pack()
+
     # The program goes through each account, and checks if the entered username and password match with any account.
     for key in account_details:
         # If they match, the current account is set accordingly.
 
+        # If the username and password match with any sets of usernames and passwords from the saved usernames and
+        # passwords in the accounts file, the user is signed in to the selected account.
         if username_entry.get() == key and password_entry.get() == account_details.get(key):
             current_account.set(username_entry.get())
             open_account_menu(username_entry.get())
@@ -620,9 +651,11 @@ def confirm_sign_in(username_entry, password_entry):
 
 
 def open_sign_in_menu():
+
     global sign_in_menu
     sign_in_menu = Toplevel()
     sign_in_menu.title("Sign In")
+
     # The user can enter his username and password
     details_frame = Frame(sign_in_menu)
     details_frame.pack()
@@ -646,15 +679,18 @@ def open_sign_in_menu():
 def submit_balance(balance_entry, name_entry):
     # The program tries, since if text is entered a run-time error would occur.
     try:
-        # The balances dictionary is updated with the new account's starting balance.
-        balances.update({name_entry.get(): int(balance_entry.get())})
+        if float(balance_entry.get()) > 0:
+            # The balances dictionary is updated with the new account's starting balance.
+            balances.update({name_entry.get(): float(balance_entry.get())})
 
-        # The account text file is loaded and saved with this new data.
-        save_account_data()
+            # The account text file is loaded and saved with this new data.
+            save_account_data()
 
-        # The balance and new account window are destroyed, leaving only the main menu open.
-        balance_window.destroy()
-        new_account_menu.destroy()
+            # The balance and new account window are destroyed, leaving only the main menu open.
+            balance_window.destroy()
+            new_account_menu.destroy()
+        else:
+            Label(balance_window, text="You cannot start with a negative balance!").pack()
     except ValueError:
         error = Label(balance_window,
                       text="You can`t enter text in the balance entry box (only numbers can be entered.)!")
@@ -663,6 +699,7 @@ def submit_balance(balance_entry, name_entry):
 
 # When creating his account, the user enters his starting balance
 def open_set_balance_menu(name_entry):
+
     # The balance window is opened.
     global balance_window
     balance_window = Toplevel()
