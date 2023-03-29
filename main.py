@@ -1,13 +1,13 @@
 """
 To do:
-> Work on the statistics of the range of days - line 386 and 426 (Currently working on selecting the dates)
-> work on statistics
+> Test the program and go over code and comments.
 """
 from tkinter import *
 import json
 from tkcalendar import Calendar
 import datetime
 from datetime import *
+from datetime import timedelta
 from collections import Counter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -299,7 +299,7 @@ def create_pichart(categories, window):
 
     # The program sets the figure of the pi-chart and the canvas bar.
     fig = plt.figure(figsize=(3, 3), dpi=100)
-    fig.set_size_inches(3, 3)
+    fig.set_size_inches(5, 4)
 
     # The pi-chart is plotted.
     plt.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=140)
@@ -369,8 +369,8 @@ def submit_day(calendar, window):
         spend_categories = Counter(spend_categories)
         deposit_categories = Counter(deposit_categories)
 
-        # Each item and its amount is multiplied with the corresponding transaction ammount, so that if 100 was spent on
-        # food once and 1000 was spent on clothes once, in the pichart they are not displayed as 50/50
+        # Each item and its amount is multiplied with the corresponding transaction amount, so that if 100 was spent on
+        # food once and 1000 was spent on clothes once, in the pi-chart they are not displayed as 50/50
         for index, item in enumerate(spend_categories):
             spend_categories[item] *= -spend_transactions[index]
         for index, item in enumerate(deposit_categories):
@@ -384,36 +384,96 @@ def submit_day(calendar, window):
 
 # A window is opened displaying the statistics of the days selected combined.
 def submit_range_of_days(date1, date2):
+
+    ranged_stats_window = Toplevel()
+    ranged_stats_window.title("Ranged statistics window")
     # Date format: %d/%m/%y
     total_transactions = 0
+
     current_line = None
-    if date1 is not None and date2 is not None:
-        current_date = date1
+
+    print(date1.get(), date2.get())
+
+    # Grabs all the transactions in and out, in the selected day, gets their categories and puts them in a list.
+    spend_categories = list()
+    deposit_categories = list()
+
+    # Grabs all the transactions in and out in the selected day and puts them in a list.
+    spend_transactions = list()
+    deposit_transactions = list()
+
+    if date1.get() != None and date2.get() != None and date2.get() > date1.get():
+        current_date = date1.get()
 
         while True:
-            print(str(current_date))
+            #This variable is used to check whether the date selected has been logged on before.
+            date_found = False
 
             # The current line is set to the corresponding line of the selected date.
-            for key in date_lines:
-                if date_lines.get(key) == current_date:
-                    print("current_line set to " + str(key))
-                    current_line = key
+            for date_index in date_lines:
+                if date_lines.get(date_index) == current_date:
+                    current_line = date_index
+                    date_found = True
+                    #The break is so that if the corresponding line index is found, the program doesn't keep looping.
+                    break
 
-            # Goes through each category for each transaction for the selected date.
-            for key in user_data[int(current_line)]:
-                total_transactions += int(key)
+            if date_found == True:
+                # Goes through each category for each transaction for the selected date, if the date selected has been
+                # logged on before.
+                for key in user_data[int(current_line)]:
+                    total_transactions += int(key)
+
+                    # If the key (the transaction amount) is negative, then the spend_categories is appended with the
+                    # category.
+                    if int(key) < 0:
+                        spend_categories.append(user_data[int(current_line)].get(key))
+                        spend_transactions.append(int(key))
+                    # If the key (the transaction amount) is positive, then the deposit_categories is appended with the
+                    # category.
+                    else:
+                        deposit_categories.append(user_data[int(current_line)].get(key))
+                        deposit_transactions.append(int(key))
 
             # Add the current day's transactions to the total transactions and their categories.
             # Now move to the next day.
-            if current_date == date2:
+            if current_date == date2.get():
                 break
-            current_date += datetime.timedelta(days=1)
-        print(total_transactions)
-    # Draw the pi-chart with the information of all the days.
+
+            # The current date is converted to a datetime object, so it can be incremented by one day. Then it is
+            # converted back to a string variable.
+            format = "%d/%m/%y"
+            present_date = datetime.strptime(current_date, format)
+            present_date += timedelta(days=1)
+            current_date = present_date.strftime(format)
+            print("new date is:", current_date)
+
+        # Grabs the amount of times each category was transacted for, and puts it into a dictionary. ("Food : 1", etc.
+        spend_categories = Counter(spend_categories)
+        deposit_categories = Counter(deposit_categories)
+
+        # Each item and its amount is multiplied with the corresponding transaction amount, so that if 100 was spent on
+        # food once and 1000 was spent on clothes once, in the pi-chart they are not displayed as 50/50
+        for index, item in enumerate(spend_categories):
+            spend_categories[item] *= -spend_transactions[index]
+        for index, item in enumerate(deposit_categories):
+            deposit_categories[item] *= deposit_transactions[index]
+
+
+        #The total transactions throughout the range of days and the pi-charts are displayed.
+        Label(ranged_stats_window,
+              text=f"Total transactions in range of dates {date1.get()} - {date2.get()}: {total_transactions}",
+              font=("Arial", 25)).pack()
+
+        Label(ranged_stats_window, text="Pi-chart of transactions in:", font=("Arial", 20)).pack()
+        create_pichart(deposit_categories, ranged_stats_window)
+        Label(ranged_stats_window, text="Pi-chart of transactions out:", font=("Arial", 20)).pack()
+        create_pichart(spend_categories, ranged_stats_window)
 
 
 # A calendar is opened, and the user selects which day he wants to see statistics for.
 def day_statistics():
+
+    global day_statistics_window
     day_statistics_window = Toplevel()
     calendar = Calendar(day_statistics_window, date_pattern="dd/mm/yy")
     calendar.pack()
@@ -422,22 +482,27 @@ def day_statistics():
     submit_button.pack()
 
 
+# The first date of the range of dates is selected by the user
+def set_date_two(calendar):
+    print(calendar.get_date())
+    global date_two
+    date_two.set(calendar.get_date())
+
+# the second date of the range of dates is selected by the user
+def set_date_one(calendar):
+    print(calendar.get_date())
+    global date_one
+    date_one.set(calendar.get_date())
+
+
 # A calendar is opened, and the user selects which range of days he wants to see statistics for.
 def ranged_statistics():
-    date_one = None
-    date_two = None
 
-    # The first date of the range of dates is selected by the user
-    def set_date_one(date):
-        print(date)
-        global date_one
-        date_one = date
+    global date_one
+    global date_two
 
-    # the second date of the range of dates is selected by the user
-    def set_date_two(date):
-        print(date)
-        global date_two
-        date_two = date
+    date_one = StringVar()
+    date_two = StringVar()
 
     ranged_statistics_window = Toplevel()
     calendar = Calendar(ranged_statistics_window, date_pattern="dd/mm/yy")
@@ -447,10 +512,10 @@ def ranged_statistics():
     frame = Frame(ranged_statistics_window)
 
     # The user selectes the starting and ending dates with these buttons
-    date_one_button = Button(frame, text="Choose date1", command=lambda date=calendar.get_date():
-    set_date_one(date))
-    date_two_button = Button(frame, text="Choose date2", command=lambda date=calendar.get_date():
-    set_date_two(date))
+    date_one_button = Button(frame, text="Choose date1", command=lambda calendar=calendar:
+    set_date_one(calendar))
+    date_two_button = Button(frame, text="Choose date2", command=lambda calendar=calendar:
+    set_date_two(calendar))
 
     # The buttons are displayed
     date_one_button.grid(row=0, column=0)
@@ -497,7 +562,7 @@ def open_account_menu(username):
     main_menu_window.destroy()
     account_window = Tk()
     account_window.title("My Financial Pal - " + username)
-    account_window.geometry("420x420")
+    account_window.geometry("600x600")
 
     # Displays the currently selected date
     selected_date_label = Label(account_window, text=f"Selected date: {present_date}", font=("Arial", 20))
